@@ -1,0 +1,16 @@
+---
+go_arch_map:
+  x86_64: 'amd64'
+  aarch64: 'arm64'
+  armv7l: 'armv7'
+  armv6l: 'armv6'
+
+go_arch: "{{ go_arch_map[ansible_architecture] | default(ansible_architecture) }}"
+
+node_exporter_bin_directory: /usr/local/bin
+node_exporter_tmp_directory: /tmp
+node_exporter_system_user: node_exporter
+node_exporter_system_group: "{{ node_exporter_system_user }}"
+node_exporter_config_directory: /etc/node_exporter
+node_exporter_logs_dir: /var/log
+node_exporter_logs_file: "{{ node_exporter_logs_dir }}/node_exporter.log"

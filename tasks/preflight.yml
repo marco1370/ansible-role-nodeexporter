@@ -1,0 +1,35 @@
+---
+# From https://github.com/patrickjahns/ansible-role-promtail/blob/master/tasks/preflight.yml
+- block:
+    - name: Get latest release
+      ansible.builtin.uri:
+        url: "https://api.github.com/repos/prometheus/node_exporter/releases/latest"
+        method: GET
+        return_content: true
+        status_code: 200
+        body_format: json
+        validate_certs: false
+        user: "{{ lookup('env', 'GH_USER') | default(omit) }}"
+        password: "{{ lookup('env', 'GH_TOKEN') | default(omit) }}"
+      no_log: "{{ not lookup('env', 'ANSIBLE_DEBUG') | bool }}"
+      register: _latest_release
+      until: _latest_release.status == 200
+      retries: 5
+
+    - name: Set node exporter version to "{{ _latest_release.json.tag_name[1:] }}"
+      ansible.builtin.set_fact:
+        node_exporter_version: "{{ _latest_release.json.tag_name[1:] }}"
+  when: node_exporter_version == "latest"
+
+- block:
+    - name: Get checksum list
+      ansible.builtin.set_fact:
+        __node_exporter_checksums: "{{ lookup('url', 'https://github.com/prometheus/node_exporter/releases/download/v' + node_exporter_version + '/sha256sums.txt', wantlist=true) | list }}"
+      run_once: true
+
+    - name: Get checksum for "{{ go_arch }}" architecture
+      ansible.builtin.set_fact:
+        __node_exporter_checksum: "{{ item.split(' ')[0] }}"
+      with_items: "{{ __node_exporter_checksums }}"
+      when: "('node_exporter-' + node_exporter_version + '.linux-' + go_arch + '.tar.gz') in item"
+  when: node_exporter_installed_version.stdout < node_exporter_version

@@ -1,0 +1,8 @@
+---
+- name: Check node exporter version
+  ansible.builtin.shell: "{{ node_exporter_bin_directory }}/node_exporter --version | /usr/bin/head -n 1 | /usr/bin/awk '{print $3}'"
+  args:
+    executable: /bin/bash
+  ignore_errors: true
+  changed_when: false
+  register: node_exporter_installed_version

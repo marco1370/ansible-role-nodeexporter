@@ -1,0 +1,4 @@
+{{ ansible_managed | comment }}
+
+:programname, isequal, "node_exporter" -{{ node_exporter_logs_file }}
+& stop

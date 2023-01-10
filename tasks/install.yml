@@ -1,0 +1,97 @@
+---
+- block:
+    - name: Download Node Exporter archive
+      ansible.builtin.get_url:
+        url: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.linux-{{ go_arch }}.tar.gz"
+        dest: "{{ node_exporter_tmp_directory }}/node_exporter-{{ node_exporter_version }}.linux-{{ go_arch }}.tar.gz"
+        force: true
+        checksum: "sha256:{{ __node_exporter_checksum }}"
+        timeout: 30
+      retries: 5
+      delay: 2
+
+    - name: Unarchive "{{ node_exporter_tmp_directory }}/node_exporter-{{ node_exporter_version }}.linux-{{ go_arch }}.tar.gz"
+      ansible.builtin.unarchive:
+        src: "{{ node_exporter_tmp_directory }}/node_exporter-{{ node_exporter_version }}.linux-{{ go_arch }}.tar.gz"
+        dest: "{{ node_exporter_tmp_directory }}"
+        remote_src: true
+
+    - name: Copy "{{ node_exporter_tmp_directory }}/node_exporter-{{ node_exporter_version }}.linux-{{ go_arch }}/node_exporter" to "{{ node_exporter_bin_directory }}"
+      ansible.builtin.copy:
+        src: '{{ node_exporter_tmp_directory }}/node_exporter-{{ node_exporter_version }}.linux-{{ go_arch }}/node_exporter'
+        dest: '{{ node_exporter_bin_directory }}'
+        remote_src: true
+        owner: root
+        group: root
+        mode: 0111
+      notify: Restart node exporter
+  when: node_exporter_installed_version.stdout < node_exporter_version
+
+- name: Remove unnecessary files
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ node_exporter_tmp_directory }}/node_exporter-{{ node_exporter_version }}.linux-{{ go_arch }}.tar.gz"
+    - "{{ node_exporter_tmp_directory }}/node_exporter-{{ node_exporter_version }}.linux-{{ go_arch }}"
+
+- block:
+    - name: Create Node Exporter group
+      ansible.builtin.group:
+        name: "{{ node_exporter_system_group }}"
+        state: present
+        system: true
+
+    - name: Create Node Exporter user
+      ansible.builtin.user:
+        name: "{{ node_exporter_system_user }}"
+        group: "{{ node_exporter_system_user }}"
+        shell: /usr/sbin/nologin
+        system: true
+        createhome: false
+        home: /
+  when: node_exporter_system_user != "root"
+
+- name: Create "{{ node_exporter_config_directory }}"
+  ansible.builtin.file:
+    path: "{{ node_exporter_config_directory }}"
+    state: directory
+    owner: "{{ node_exporter_system_user }}"
+    group: "{{ node_exporter_system_group }}"
+    mode: 0550
+
+- name: Create node exporter config files
+  ansible.builtin.template:
+    src: 'web-config.yml.j2'
+    dest: '{{ node_exporter_config_directory }}/web-config.yml'
+    owner: "{{ node_exporter_system_user }}"
+    group: "{{ node_exporter_system_group }}"
+    mode: 0440
+  notify: Restart node exporter
+
+- name: Create systemd service unit
+  ansible.builtin.template:
+    src: node_exporter.service.j2
+    dest: /etc/systemd/system/node_exporter.service
+    owner: root
+    group: root
+    mode: 0644
+  notify:
+    - Restart node exporter
+
+- name: Import rsyslog config file
+  ansible.builtin.template:
+    src: 10-node_exporter.conf.j2
+    dest: /etc/rsyslog.d/10-node_exporter.conf
+    owner: root
+    group: root
+    mode: 0644
+  notify: Restart rsyslog
+
+- name: Import logrotate config file
+  template:
+    src: node_exporter.j2
+    dest: /etc/logrotate.d/node_exporter
+    owner: root
+    group: root
+    mode: 0644

@@ -1,0 +1,20 @@
+---
+galaxy_info:
+  role_name: node_exporter
+  namespace: node_exporter
+  author: Anthony Dieperink
+  description: Ansible Role to install the Prometheus Node Exporter binary
+  license: MIT
+  min_ansible_version: 2.10
+
+  platforms:
+    - name: Debian
+      versions:
+        - bullseye
+        - buster
+
+  galaxy_tags:
+    - linux
+    - monitoring
+    - prometheus
+    - nodeexporter

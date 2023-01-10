@@ -1,0 +1,6 @@
+---
+{{ ansible_managed | comment }}
+
+{% if node_exporter_web_configuration is defined and node_exporter_web_configuration | length > 0 %}
+{{ node_exporter_web_configuration | to_nice_yaml(indent=2) }}
+{% endif %}

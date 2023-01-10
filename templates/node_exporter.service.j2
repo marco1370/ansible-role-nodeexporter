@@ -1,0 +1,43 @@
+{{ ansible_managed | comment }}
+
+[Unit]
+Description=node_exporter
+Documentation=https://prometheus.io/docs/guides/node-exporter/
+Wants=network-online.target
+After=network-online.target
+AssertFileIsExecutable={{ node_exporter_bin_directory }}/node_exporter
+
+[Service]
+Restart=always
+RestartSec=5
+TimeoutSec=5
+User={{ node_exporter_system_user }}
+Group={{ node_exporter_system_group }}
+ExecStart={{ node_exporter_bin_directory }}/node_exporter \
+{% if node_exporter_version >= '1.5.0' %}
+	--web.config.file={{ node_exporter_config_directory }}/web-config.yml \
+{% else %}
+	--web.config={{ node_exporter_config_directory }}/web-config.yml \
+{% endif %}
+{% if node_exporter_listen_addresses is defined and node_exporter_listen_addresses | length > 0 %}
+{% for address in node_exporter_listen_addresses %}
+	--web.listen-address={{ address }} \
+{% endfor %}
+{% endif %}
+{% if node_exporter_extra_opts is defined and node_exporter_extra_opts | length > 0 %}
+{% for opt in node_exporter_extra_opts %}
+	{{ opt }} \
+{% endfor %}
+{% endif %}
+	--log.level={{ node_exporter_log_level }} \
+	--log.format={{ node_exporter_log_format }}
+PrivateTmp=true
+PrivateDevices=false
+ProtectHome=true
+ProtectSystem=full
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
