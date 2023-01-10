@@ -1,5 +1,4 @@
 ---
-# From https://github.com/patrickjahns/ansible-role-promtail/blob/master/tasks/preflight.yml
 - block:
     - name: Get latest release
       ansible.builtin.uri:
